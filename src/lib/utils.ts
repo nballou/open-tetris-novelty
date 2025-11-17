@@ -466,10 +466,51 @@ export function findBestPlacement(
   return bestPlacement;
 }
 
+// Check if board is mostly empty (early game)
+export function isBoardMostlyEmpty(board: Board): boolean {
+  let filledCells = 0;
+  const totalCells = BOARD_WIDTH * BOARD_HEIGHT;
+
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    for (let x = 0; x < BOARD_WIDTH; x++) {
+      if (board[y][x] !== null) {
+        filledCells++;
+      }
+    }
+  }
+
+  // Consider board "mostly empty" if less than 15% filled
+  return filledCells / totalCells < 0.15;
+}
+
+// Check if there's a near-complete line (opportunity to clear)
+export function hasNearCompleteLine(board: Board): boolean {
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    const filledInRow = board[y].filter((cell) => cell !== null).length;
+    // If a row is 70% or more filled, there's an opportunity
+    if (filledInRow >= BOARD_WIDTH * 0.7) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Select the optimal piece type using advanced heuristics
 export function selectOptimalPiece(board: Board): TetrominoType {
   const pieceTypes: TetrominoType[] = ["I", "O", "T", "S", "Z", "J", "L"];
-  let bestPiece: TetrominoType = "T"; // Default to T piece
+
+  // If board is mostly empty, use random selection (early game)
+  if (isBoardMostlyEmpty(board)) {
+    return pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+  }
+
+  // If there's no near-complete line, add 60% chance of random piece
+  if (!hasNearCompleteLine(board) && Math.random() < 0.6) {
+    return pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+  }
+
+  // Otherwise, use AI to find optimal piece
+  let bestPiece: TetrominoType = "T";
   let bestScore = Infinity;
 
   for (const pieceType of pieceTypes) {
