@@ -386,35 +386,79 @@ export function simulatePlacement(
   return clearedBoard;
 }
 
+// Calculate a score for a board state (lower is better)
+export function scoreBoardState(
+  currentBoard: Board,
+  resultBoard: Board,
+  linesCleared: number
+): number {
+  const metrics = calculateBoardMetrics(resultBoard);
+
+  // Weights for different factors
+  const HOLE_WEIGHT = 10;      // Holes are bad (high penalty)
+  const HEIGHT_WEIGHT = 0.5;   // Prefer lower boards
+  const BUMPINESS_WEIGHT = 0.3; // Prefer smooth surfaces
+  const LINES_WEIGHT = -5;     // Lines cleared are good (negative = reward)
+
+  // Calculate score (lower is better)
+  const score =
+    metrics.holes * HOLE_WEIGHT +
+    metrics.height * HEIGHT_WEIGHT +
+    metrics.bumpiness * BUMPINESS_WEIGHT +
+    linesCleared * LINES_WEIGHT;
+
+  return score;
+}
+
 // Find the best placement for a given piece type (considering all rotations and positions)
 export function findBestPlacement(
   pieceType: TetrominoType,
   board: Board
 ): {
-  holes: number;
+  score: number;
   x: number;
   rotation: number;
+  linesCleared: number;
 } | null {
-  let bestPlacement: { holes: number; x: number; rotation: number } | null =
+  let bestPlacement: { score: number; x: number; rotation: number; linesCleared: number } | null =
     null;
 
   // Try all rotations (0-3)
   for (let rotation = 0; rotation < 4; rotation++) {
     // Try all horizontal positions
     for (let x = -3; x < BOARD_WIDTH + 3; x++) {
-      const resultBoard = simulatePlacement(pieceType, board, x, rotation);
+      // Create piece and drop it
+      const piece = generateNewPiece(pieceType);
+      piece.rotation = rotation;
+      piece.position.x = x;
+      piece.position.y = 0;
 
-      if (resultBoard) {
-        const metrics = calculateBoardMetrics(resultBoard);
+      // Drop to lowest valid position
+      while (
+        isValidMove(
+          { ...piece, position: { ...piece.position, y: piece.position.y + 1 } },
+          board
+        )
+      ) {
+        piece.position.y++;
+      }
 
-        if (
-          !bestPlacement ||
-          metrics.holes < bestPlacement.holes ||
-          (metrics.holes === bestPlacement.holes &&
-            Math.random() < 0.5) // Random tiebreaker
-        ) {
-          bestPlacement = { holes: metrics.holes, x, rotation };
-        }
+      // Check if placement is valid
+      if (!isValidMove(piece, board)) {
+        continue;
+      }
+
+      // Add piece to board
+      const boardWithPiece = addPieceToBoard(board, piece);
+
+      // Clear lines
+      const { newBoard: clearedBoard, linesCleared } = clearLines(boardWithPiece);
+
+      // Calculate score
+      const score = scoreBoardState(board, clearedBoard, linesCleared);
+
+      if (!bestPlacement || score < bestPlacement.score) {
+        bestPlacement = { score, x, rotation, linesCleared };
       }
     }
   }
@@ -422,20 +466,18 @@ export function findBestPlacement(
   return bestPlacement;
 }
 
-// Select the optimal piece type that minimizes holes
+// Select the optimal piece type using advanced heuristics
 export function selectOptimalPiece(board: Board): TetrominoType {
   const pieceTypes: TetrominoType[] = ["I", "O", "T", "S", "Z", "J", "L"];
-  let bestPiece: TetrominoType = "I";
-  let bestHoles = Infinity;
+  let bestPiece: TetrominoType = "T"; // Default to T piece
+  let bestScore = Infinity;
 
   for (const pieceType of pieceTypes) {
     const placement = findBestPlacement(pieceType, board);
 
-    if (placement) {
-      if (placement.holes < bestHoles) {
-        bestHoles = placement.holes;
-        bestPiece = pieceType;
-      }
+    if (placement && placement.score < bestScore) {
+      bestScore = placement.score;
+      bestPiece = pieceType;
     }
   }
 
