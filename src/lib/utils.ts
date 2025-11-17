@@ -479,16 +479,16 @@ export function isBoardMostlyEmpty(board: Board): boolean {
     }
   }
 
-  // Consider board "mostly empty" if less than 15% filled
-  return filledCells / totalCells < 0.15;
+  // Consider board "mostly empty" if less than 8% filled
+  return filledCells / totalCells < 0.08;
 }
 
 // Check if there's a near-complete line (opportunity to clear)
 export function hasNearCompleteLine(board: Board): boolean {
   for (let y = 0; y < BOARD_HEIGHT; y++) {
     const filledInRow = board[y].filter((cell) => cell !== null).length;
-    // If a row is 70% or more filled, there's an opportunity
-    if (filledInRow >= BOARD_WIDTH * 0.7) {
+    // If a row is 60% or more filled, there's an opportunity
+    if (filledInRow >= BOARD_WIDTH * 0.6) {
       return true;
     }
   }
@@ -509,7 +509,12 @@ export function selectOptimalPiece(board: Board): TetrominoType {
     return pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
   }
 
-  // Otherwise, use AI to find optimal piece
+  // Even with opportunities, keep 20% randomness (80% AI max)
+  if (Math.random() < 0.2) {
+    return pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+  }
+
+  // Use AI to find optimal piece
   let bestPiece: TetrominoType = "T";
   let bestScore = Infinity;
 

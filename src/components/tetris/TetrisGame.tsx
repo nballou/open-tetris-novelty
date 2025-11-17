@@ -97,8 +97,11 @@ const TetrisGame: React.FC = () => {
       <div className="flex flex-col gap-4">
         <NextPiece pieces={nextPieces} />
 
-        {/* Perfect Piece Mode Toggle */}
-        <div className="bg-black/40 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+        {/* Perfect Piece Mode Toggle - Developer Debug */}
+        <div className="bg-black/40 backdrop-blur-sm p-4 rounded-lg border border-yellow-500/30">
+          <div className="text-xs font-mono text-yellow-500/70 mb-2 text-center">
+            [DEV DEBUG]
+          </div>
           <button
             onClick={togglePerfectPieceMode}
             className={`w-full px-4 py-2 rounded font-semibold transition-all ${
@@ -111,7 +114,7 @@ const TetrisGame: React.FC = () => {
           </button>
           <p className="text-xs text-gray-400 mt-2 text-center">
             {perfectPieceMode
-              ? "AI is selecting optimal pieces"
+              ? "AI assistance active (~80% optimal)"
               : "Normal piece generation"}
           </p>
         </div>
