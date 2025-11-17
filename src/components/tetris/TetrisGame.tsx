@@ -27,6 +27,7 @@ const TetrisGame: React.FC = () => {
     highScore,
     gameState,
     dropSpeed,
+    perfectPieceMode,
 
     // Actions
     movePiece,
@@ -36,6 +37,7 @@ const TetrisGame: React.FC = () => {
     holdPiece,
     resetGame,
     pauseGame,
+    togglePerfectPieceMode,
   } = useGameLogic();
 
   // Keyboard controls
@@ -94,6 +96,26 @@ const TetrisGame: React.FC = () => {
       {/* Right panel */}
       <div className="flex flex-col gap-4">
         <NextPiece pieces={nextPieces} />
+
+        {/* Perfect Piece Mode Toggle */}
+        <div className="bg-black/40 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+          <button
+            onClick={togglePerfectPieceMode}
+            className={`w-full px-4 py-2 rounded font-semibold transition-all ${
+              perfectPieceMode
+                ? "bg-green-500 text-white shadow-lg shadow-green-500/50"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            {perfectPieceMode ? "Perfect Piece: ON" : "Perfect Piece: OFF"}
+          </button>
+          <p className="text-xs text-gray-400 mt-2 text-center">
+            {perfectPieceMode
+              ? "AI is selecting optimal pieces"
+              : "Normal piece generation"}
+          </p>
+        </div>
+
         <Controls
           onMove={(direction) => {
             switch (direction) {

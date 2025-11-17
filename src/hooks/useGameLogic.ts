@@ -14,6 +14,7 @@ import {
   calculateLevel,
   calculateSpeed,
   getWallKicks,
+  selectOptimalPiece,
 } from "@/lib/utils";
 
 export function useGameLogic() {
@@ -34,8 +35,17 @@ export function useGameLogic() {
   const [gameState, setGameState] = useState<GameState>("INITIAL");
   const [dropSpeed, setDropSpeed] = useState(INITIAL_SPEED);
 
+  // Perfect piece mode (AI assistance)
+  const [perfectPieceMode, setPerfectPieceMode] = useState(false);
+
   // Get next piece from queue
-  const getNextPiece = useCallback((): TetrominoType => {
+  const getNextPiece = useCallback((currentBoard: Board): TetrominoType => {
+    // If perfect piece mode is enabled, use AI to select optimal piece
+    if (perfectPieceMode) {
+      return selectOptimalPiece(currentBoard);
+    }
+
+    // Otherwise, use normal bag system
     // Ensure bag has pieces
     if (bagRef.current.length === 0) {
       bagRef.current.push(...generateBag());
@@ -48,7 +58,7 @@ export function useGameLogic() {
     // Update preview state from the bag head
     setNextPieces(bagRef.current.slice(0, PREVIEW_PIECES));
     return next;
-  }, []);
+  }, [perfectPieceMode]);
 
   // Update ghost piece
   const updateGhostPiece = useCallback(
@@ -96,7 +106,7 @@ export function useGameLogic() {
         }
 
         setBoard(clearedBoard);
-        const nextType = getNextPiece();
+        const nextType = getNextPiece(clearedBoard);
         const newPiece = generateNewPiece(nextType);
 
         if (!isValidMove(newPiece, clearedBoard)) {
@@ -196,7 +206,7 @@ export function useGameLogic() {
     if (heldPiece) {
       newCurrentPiece = generateNewPiece(heldPiece);
     } else {
-      const nextType = getNextPiece();
+      const nextType = getNextPiece(board);
       newCurrentPiece = generateNewPiece(nextType);
     }
 
@@ -209,6 +219,7 @@ export function useGameLogic() {
     heldPiece,
     canHold,
     gameState,
+    board,
     getNextPiece,
     updateGhostPiece,
   ]);
@@ -222,7 +233,7 @@ export function useGameLogic() {
       bagRef.current.push(...generateBag());
     }
     setNextPieces(bagRef.current.slice(0, PREVIEW_PIECES));
-    const firstType = getNextPiece();
+    const firstType = getNextPiece(emptyBoard);
     const firstPiece = generateNewPiece(firstType);
     const ghostPiece = getGhostPiecePosition(firstPiece, emptyBoard);
 
@@ -244,6 +255,11 @@ export function useGameLogic() {
     setGameState((prev) => (prev === "PLAYING" ? "PAUSED" : "PLAYING"));
   }, []);
 
+  // Toggle perfect piece mode
+  const togglePerfectPieceMode = useCallback(() => {
+    setPerfectPieceMode((prev) => !prev);
+  }, []);
+
   // Initialize game on mount
   useEffect(() => {
     resetGame();
@@ -263,6 +279,7 @@ export function useGameLogic() {
     highScore,
     gameState,
     dropSpeed,
+    perfectPieceMode,
 
     // Actions
     movePiece,
@@ -272,5 +289,6 @@ export function useGameLogic() {
     holdPiece,
     resetGame,
     pauseGame,
+    togglePerfectPieceMode,
   };
 }

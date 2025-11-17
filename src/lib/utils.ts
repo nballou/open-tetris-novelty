@@ -290,3 +290,154 @@ export function calculateSpeed(level: number): number {
 export function isGameOver(piece: Tetromino, board: Board): boolean {
   return !isValidMove(piece, board);
 }
+
+// ==================== PERFECT PIECE AI ====================
+
+// Count holes in the board (empty cells with filled cells above them)
+export function countHoles(board: Board): number {
+  let holes = 0;
+
+  for (let x = 0; x < BOARD_WIDTH; x++) {
+    let foundBlock = false;
+    for (let y = 0; y < BOARD_HEIGHT; y++) {
+      if (board[y][x] !== null) {
+        foundBlock = true;
+      } else if (foundBlock) {
+        holes++;
+      }
+    }
+  }
+
+  return holes;
+}
+
+// Calculate additional metrics for board evaluation
+export function calculateBoardMetrics(board: Board): {
+  holes: number;
+  height: number;
+  bumpiness: number;
+} {
+  const holes = countHoles(board);
+
+  // Calculate height (highest occupied cell)
+  let height = 0;
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    if (board[y].some((cell) => cell !== null)) {
+      height = BOARD_HEIGHT - y;
+      break;
+    }
+  }
+
+  // Calculate bumpiness (sum of height differences between adjacent columns)
+  const columnHeights: number[] = [];
+  for (let x = 0; x < BOARD_WIDTH; x++) {
+    let colHeight = 0;
+    for (let y = 0; y < BOARD_HEIGHT; y++) {
+      if (board[y][x] !== null) {
+        colHeight = BOARD_HEIGHT - y;
+        break;
+      }
+    }
+    columnHeights.push(colHeight);
+  }
+
+  let bumpiness = 0;
+  for (let i = 0; i < columnHeights.length - 1; i++) {
+    bumpiness += Math.abs(columnHeights[i] - columnHeights[i + 1]);
+  }
+
+  return { holes, height, bumpiness };
+}
+
+// Simulate placing a piece at a specific position and rotation, return the resulting board
+export function simulatePlacement(
+  pieceType: TetrominoType,
+  board: Board,
+  x: number,
+  rotation: number
+): Board | null {
+  // Create piece at top
+  const piece = generateNewPiece(pieceType);
+  piece.rotation = rotation;
+  piece.position.x = x;
+  piece.position.y = 0;
+
+  // Drop piece to lowest valid position
+  while (
+    isValidMove(
+      { ...piece, position: { ...piece.position, y: piece.position.y + 1 } },
+      board
+    )
+  ) {
+    piece.position.y++;
+  }
+
+  // Check if placement is valid
+  if (!isValidMove(piece, board)) {
+    return null;
+  }
+
+  // Add piece to board
+  const newBoard = addPieceToBoard(board, piece);
+
+  // Clear any completed lines
+  const { newBoard: clearedBoard } = clearLines(newBoard);
+
+  return clearedBoard;
+}
+
+// Find the best placement for a given piece type (considering all rotations and positions)
+export function findBestPlacement(
+  pieceType: TetrominoType,
+  board: Board
+): {
+  holes: number;
+  x: number;
+  rotation: number;
+} | null {
+  let bestPlacement: { holes: number; x: number; rotation: number } | null =
+    null;
+
+  // Try all rotations (0-3)
+  for (let rotation = 0; rotation < 4; rotation++) {
+    // Try all horizontal positions
+    for (let x = -3; x < BOARD_WIDTH + 3; x++) {
+      const resultBoard = simulatePlacement(pieceType, board, x, rotation);
+
+      if (resultBoard) {
+        const metrics = calculateBoardMetrics(resultBoard);
+
+        if (
+          !bestPlacement ||
+          metrics.holes < bestPlacement.holes ||
+          (metrics.holes === bestPlacement.holes &&
+            Math.random() < 0.5) // Random tiebreaker
+        ) {
+          bestPlacement = { holes: metrics.holes, x, rotation };
+        }
+      }
+    }
+  }
+
+  return bestPlacement;
+}
+
+// Select the optimal piece type that minimizes holes
+export function selectOptimalPiece(board: Board): TetrominoType {
+  const pieceTypes: TetrominoType[] = ["I", "O", "T", "S", "Z", "J", "L"];
+  let bestPiece: TetrominoType = "I";
+  let bestHoles = Infinity;
+
+  for (const pieceType of pieceTypes) {
+    const placement = findBestPlacement(pieceType, board);
+
+    if (placement) {
+      if (placement.holes < bestHoles) {
+        bestHoles = placement.holes;
+        bestPiece = pieceType;
+      }
+    }
+  }
+
+  return bestPiece;
+}
